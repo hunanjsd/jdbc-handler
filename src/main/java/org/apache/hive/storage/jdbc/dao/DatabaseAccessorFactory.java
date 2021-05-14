@@ -51,6 +51,10 @@ public class DatabaseAccessorFactory {
       accessor = new MsSqlDatabaseAccessor();
       break;
 
+    case CLICKHOUSE:
+      accessor = new ClickhouseDatabaseAccessor();
+      break;
+
     default:
       accessor = new GenericJdbcDatabaseAccessor();
       break;

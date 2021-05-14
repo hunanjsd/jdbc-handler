@@ -94,8 +94,7 @@ public class GenericJdbcDatabaseAccessor implements DatabaseAccessor {
 
   protected String getMetaDataQuery(Configuration conf) {
     String sql = JdbcStorageConfigManager.getQueryToExecute(conf);
-    String metadataQuery = addLimitToQuery(sql, 1);
-    return metadataQuery;
+    return addLimitToQuery(sql, 1);
   }
 
   @Override
@@ -185,8 +184,7 @@ public class GenericJdbcDatabaseAccessor implements DatabaseAccessor {
    * Uses generic JDBC escape functions to add a limit clause to a query string
    */
   protected String addLimitToQuery(String sql, int limit) {
-//    return sql + " {LIMIT " + limit + "}";
-    return sql + " LIMIT " + limit ;
+    return sql + " {LIMIT " + limit + "}";
   }
 
 

@@ -21,7 +21,8 @@ public enum JdbcStorageConfig {
   QUERY("query", false),
   TABLE("table", false),
   JDBC_FETCH_SIZE("jdbc.fetch.size", false),
-  COLUMN_MAPPING("column.mapping", false);
+  COLUMN_MAPPING("column.mapping", false),
+  NUMBER_PARTITION("num.partitions", false);
 
   private String propertyName;
   private boolean required = false;

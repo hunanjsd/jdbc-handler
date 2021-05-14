@@ -16,20 +16,14 @@ package org.apache.hive.storage.jdbc.conf;
 
 import java.io.IOException;
 
-import org.apache.hadoop.hive.conf.Validator;
 import org.apache.hadoop.hive.shims.ShimLoader;
 import org.apache.hadoop.hive.ql.metadata.Hive;
 import org.apache.hadoop.hive.ql.metadata.HiveException;
 import org.apache.hadoop.hive.conf.HiveConf;
-import org.apache.hive.storage.jdbc.conf.DatabaseType;
-
 import org.apache.hadoop.conf.Configuration;
-
 import org.apache.hive.storage.jdbc.QueryConditionBuilder;
-
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 import java.util.EnumSet;
 import java.util.Map;
 import java.util.Map.Entry;

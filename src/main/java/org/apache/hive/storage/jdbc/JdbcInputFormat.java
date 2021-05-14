@@ -24,6 +24,8 @@ import org.apache.hadoop.mapred.InputSplit;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
 import org.apache.hadoop.mapred.Reporter;
+import org.apache.hive.storage.jdbc.conf.DatabaseType;
+import org.apache.hive.storage.jdbc.conf.JdbcStorageConfig;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -64,6 +66,11 @@ public class JdbcInputFormat extends HiveInputFormat<LongWritable, MapWritable> 
 
       if (dbAccessor == null) {
         dbAccessor = DatabaseAccessorFactory.getAccessor(job);
+      }
+
+      int inputNumberPartition =  job.getInt(JdbcStorageConfig.NUMBER_PARTITION.getPropertyName(), -2);
+      if(inputNumberPartition != -2){
+        numSplits = inputNumberPartition;
       }
 
       int numRecords = numSplits <=1 ? Integer.MAX_VALUE : dbAccessor.getTotalNumberOfRecords(job);
