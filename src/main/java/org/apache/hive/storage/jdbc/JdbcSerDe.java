@@ -21,8 +21,9 @@ import org.apache.hadoop.hive.serde2.SerDeException;
 import org.apache.hadoop.hive.serde2.SerDeStats;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory;
+import org.apache.hadoop.hive.serde2.objectinspector.StructField;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
-import org.apache.hadoop.hive.serde2.objectinspector.primitive.PrimitiveObjectInspectorFactory;
+import org.apache.hadoop.hive.serde2.objectinspector.primitive.*;
 import org.apache.hadoop.hive.serde2.typeinfo.PrimitiveTypeInfo;
 import org.apache.hadoop.hive.serde2.typeinfo.TypeInfoFactory;
 import org.apache.hadoop.io.NullWritable;
@@ -30,6 +31,7 @@ import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.ObjectWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
+import org.apache.hive.storage.jdbc.clickhouse.ClickHouseWritable;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -38,10 +40,7 @@ import org.apache.hive.storage.jdbc.conf.JdbcStorageConfigManager;
 import org.apache.hive.storage.jdbc.dao.DatabaseAccessor;
 import org.apache.hive.storage.jdbc.dao.DatabaseAccessorFactory;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Properties;
+import java.util.*;
 
 public class JdbcSerDe extends AbstractSerDe {
 
@@ -50,6 +49,7 @@ public class JdbcSerDe extends AbstractSerDe {
   private StructObjectInspector objectInspector;
   private int numColumns;
   private String[] hiveColumnTypeArray;
+  private PrimitiveTypeInfo[] types;
   private List<String> columnNames;
   private List<Object> row;
 
@@ -87,12 +87,14 @@ public class JdbcSerDe extends AbstractSerDe {
         }
 
         List<ObjectInspector> fieldInspectors = new ArrayList<ObjectInspector>(numColumns);
+        List<PrimitiveTypeInfo> columnTypes = new ArrayList<>();
         for (int i = 0; i < numColumns; i++) {
           PrimitiveTypeInfo ti = TypeInfoFactory.getPrimitiveTypeInfo(hiveColumnTypeArray[i]);
           ObjectInspector oi = PrimitiveObjectInspectorFactory.getPrimitiveJavaObjectInspector(ti);
+          columnTypes.add(ti);
           fieldInspectors.add(oi);
         }
-
+        types =  columnTypes.toArray(new PrimitiveTypeInfo[columnTypes.size()]);
         objectInspector =
           ObjectInspectorFactory.getStandardStructObjectInspector(hiveColumnNames,
               fieldInspectors);
@@ -154,7 +156,69 @@ public class JdbcSerDe extends AbstractSerDe {
 
   @Override
   public Writable serialize(Object obj, ObjectInspector objInspector) throws SerDeException {
-    throw new UnsupportedOperationException("Writes are not allowed");
+    if (objectInspector.getCategory() != ObjectInspector.Category.STRUCT) {
+      throw new SerDeException(getClass().toString() + " can only serialize struct types, but we got: "
+              + objectInspector.getTypeName());
+    }
+
+    StructObjectInspector soi = (StructObjectInspector) objectInspector;
+    List<? extends StructField> fields = soi.getAllStructFieldRefs();
+    List<Object> values = soi.getStructFieldsDataAsList(obj);
+
+    final Map<String, Object> value = new HashMap<>();
+    for (int i = 0; i < columnNames.size(); i++) {
+      if (values.get(i) == null) {
+        // null, we just add it
+        value.put(columnNames.get(i), null);
+        continue;
+      }
+      final Object res;
+      switch (types[i].getPrimitiveCategory()) {
+        case TIMESTAMP:
+          res = ((TimestampObjectInspector) fields.get(i).getFieldObjectInspector())
+                  .getPrimitiveJavaObject(values.get(i));
+          break;
+        case BYTE:
+          res = ((ByteObjectInspector) fields.get(i).getFieldObjectInspector()).get(values.get(i));
+          break;
+        case SHORT:
+          res = ((ShortObjectInspector) fields.get(i).getFieldObjectInspector()).get(values.get(i));
+          break;
+        case INT:
+          res = ((IntObjectInspector) fields.get(i).getFieldObjectInspector()).get(values.get(i));
+          break;
+        case LONG:
+          res = ((LongObjectInspector) fields.get(i).getFieldObjectInspector()).get(values.get(i));
+          break;
+        case FLOAT:
+          res = ((FloatObjectInspector) fields.get(i).getFieldObjectInspector()).get(values.get(i));
+          break;
+        case DOUBLE:
+          res = ((DoubleObjectInspector) fields.get(i).getFieldObjectInspector()).get(values.get(i));
+          break;
+        case CHAR:
+          res = ((HiveCharObjectInspector) fields.get(i).getFieldObjectInspector())
+                  .getPrimitiveJavaObject(values.get(i)).getValue();
+          break;
+        case VARCHAR:
+          res = ((HiveVarcharObjectInspector) fields.get(i).getFieldObjectInspector())
+                  .getPrimitiveJavaObject(values.get(i)).getValue();
+          break;
+        case STRING:
+          res = ((StringObjectInspector) fields.get(i).getFieldObjectInspector())
+                  .getPrimitiveJavaObject(values.get(i));
+          break;
+        case DATE:
+          res = ((DateObjectInspector) fields.get(i).getFieldObjectInspector())
+                  .getPrimitiveJavaObject(values.get(i));
+          break;
+        default:
+          throw new SerDeException("Unsupported type: " + types[i].getPrimitiveCategory());
+      }
+      value.put(columnNames.get(i), res);
+    }
+    return new ClickHouseWritable(value);
+//    throw new UnsupportedOperationException("Writes are not allowed");
   }
 
 

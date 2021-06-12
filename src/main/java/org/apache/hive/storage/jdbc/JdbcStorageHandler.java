@@ -145,6 +145,10 @@ public class JdbcStorageHandler implements HiveStorageHandler {
     try {
       classesToLoad.add(Class.forName("com.microsoft.sqlserver.jdbc.SQLServerDriver"));
     } catch (Exception e) {
+    } // Adding clickhouse jdbc driver if exists
+    try {
+      classesToLoad.add(Class.forName("ru.yandex.clickhouse.ClickHouseDriver"));
+    } catch (Exception e) {
     }
     try {
       JarUtils.addDependencyJars(conf, classesToLoad);
