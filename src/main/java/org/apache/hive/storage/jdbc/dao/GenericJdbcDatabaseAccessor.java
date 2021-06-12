@@ -14,12 +14,8 @@
  */
 package org.apache.hive.storage.jdbc.dao;
 
-import org.apache.commons.dbcp.BasicDataSourceFactory;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.hive.serde.serdeConstants;
-import org.apache.hadoop.io.Text;
-import org.apache.hadoop.security.Credentials;
-import org.apache.hadoop.security.UserGroupInformation;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,72 +26,34 @@ import org.apache.hive.storage.jdbc.exception.HiveJdbcDatabaseAccessException;
 
 import javax.sql.DataSource;
 
-import java.sql.Connection;
-import java.sql.PreparedStatement;
-import java.sql.ResultSet;
-import java.sql.ResultSetMetaData;
-import java.sql.SQLException;
-import java.util.ArrayList;
-import java.util.List;
-import java.util.Map;
-import java.util.Map.Entry;
-import java.util.Properties;
+import java.sql.*;
+import java.util.*;
 
 /**
  * A data accessor that should in theory work with all JDBC compliant database drivers.
+ * @author simo
  */
-public class GenericJdbcDatabaseAccessor implements DatabaseAccessor {
+public class GenericJdbcDatabaseAccessor extends AbstractDatabaseAccessor {
 
-  protected static final String DBCP_CONFIG_PREFIX = JdbcStorageConfigManager.CONFIG_PREFIX + ".dbcp";
   protected static final int DEFAULT_FETCH_SIZE = 1000;
   protected static final Logger LOGGER = LoggerFactory.getLogger(GenericJdbcDatabaseAccessor.class);
   protected DataSource dbcpDataSource = null;
-  protected static final Text DBCP_PWD = new Text(DBCP_CONFIG_PREFIX + ".password");
 
-
-  public GenericJdbcDatabaseAccessor() {
+  public GenericJdbcDatabaseAccessor(Configuration configuration) {
+    super(configuration);
   }
 
 
   @Override
-  public List<String> getColumnNames(Configuration conf) throws HiveJdbcDatabaseAccessException {
-    Connection conn = null;
-    PreparedStatement ps = null;
-    ResultSet rs = null;
-
-    try {
-      initializeDatabaseConnection(conf);
-      String metadataQuery = getMetaDataQuery(conf);
-      LOGGER.debug("Query to execute is [{}]", metadataQuery);
-
-      conn = dbcpDataSource.getConnection();
-      ps = conn.prepareStatement(metadataQuery);
-      rs = ps.executeQuery();
-
-      ResultSetMetaData metadata = rs.getMetaData();
-      int numColumns = metadata.getColumnCount();
-      List<String> columnNames = new ArrayList<String>(numColumns);
-      for (int i = 0; i < numColumns; i++) {
-        columnNames.add(metadata.getColumnName(i + 1));
-      }
-
-      return columnNames;
-    }
-    catch (Exception e) {
-      LOGGER.error("Error while trying to get column names.", e);
-      throw new HiveJdbcDatabaseAccessException("Error while trying to get column names: " + e.getMessage(), e);
-    }
-    finally {
-      cleanupResources(conn, ps, rs);
-    }
-
+  public List<String> getColumnNames() {
+      return this.columnNames;
   }
 
-
-  protected String getMetaDataQuery(Configuration conf) {
-    String sql = JdbcStorageConfigManager.getQueryToExecute(conf);
-    return addLimitToQuery(sql, 1);
+  @Override
+  public List<String> getColumnTypes() {
+    return this.columnTypes;
   }
+
 
   @Override
   public int getTotalNumberOfRecords(Configuration conf) throws HiveJdbcDatabaseAccessException {
@@ -104,7 +62,7 @@ public class GenericJdbcDatabaseAccessor implements DatabaseAccessor {
     ResultSet rs = null;
 
     try {
-      initializeDatabaseConnection(conf);
+      initializeDatabaseConnection();
       String sql = JdbcStorageConfigManager.getQueryToExecute(conf);
       String countQuery = "SELECT COUNT(*) FROM (" + sql + ") tmptable";
       LOGGER.info("Query to execute is [{}]", countQuery);
@@ -142,16 +100,15 @@ public class GenericJdbcDatabaseAccessor implements DatabaseAccessor {
     ResultSet rs = null;
 
     try {
-      initializeDatabaseConnection(conf);
+      initializeDatabaseConnection();
       String sql = JdbcStorageConfigManager.getQueryToExecute(conf);
       String limitQuery = addLimitAndOffsetToQuery(sql, limit, offset);
       LOGGER.info("Query to execute is [{}]", limitQuery);
 
-      conn = dbcpDataSource.getConnection();
+      conn = getDbcpDataSource().getConnection();
       ps = conn.prepareStatement(limitQuery, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);
       ps.setFetchSize(getFetchSize(conf));
       rs = ps.executeQuery();
-
       return new JdbcRecordIterator(conn, ps, rs, conf.get(serdeConstants.LIST_COLUMN_TYPES));
     }
     catch (Exception e) {
@@ -177,90 +134,6 @@ public class GenericJdbcDatabaseAccessor implements DatabaseAccessor {
     else {
       return sql + " {LIMIT " + limit + " OFFSET " + offset + "}";
     }
-  }
-
-
-  /*
-   * Uses generic JDBC escape functions to add a limit clause to a query string
-   */
-  protected String addLimitToQuery(String sql, int limit) {
-    return sql + " {LIMIT " + limit + "}";
-  }
-
-
-  protected void cleanupResources(Connection conn, PreparedStatement ps, ResultSet rs) {
-    try {
-      if (rs != null) {
-        rs.close();
-      }
-    } catch (SQLException e) {
-      LOGGER.warn("Caught exception during resultset cleanup.", e);
-    }
-
-    try {
-      if (ps != null) {
-        ps.close();
-      }
-    } catch (SQLException e) {
-      LOGGER.warn("Caught exception during statement cleanup.", e);
-    }
-
-    try {
-      if (conn != null) {
-        conn.close();
-      }
-    } catch (SQLException e) {
-      LOGGER.warn("Caught exception during connection cleanup.", e);
-    }
-  }
-
-  protected void initializeDatabaseConnection(Configuration conf) throws Exception {
-    if (dbcpDataSource == null) {
-      synchronized (this) {
-        if (dbcpDataSource == null) {
-          Properties props = getConnectionPoolProperties(conf);
-          dbcpDataSource = BasicDataSourceFactory.createDataSource(props);
-        }
-      }
-    }
-  }
-
-
-  protected Properties getConnectionPoolProperties(Configuration conf) throws Exception {
-    // Create the default properties object
-    Properties dbProperties = getDefaultDBCPProperties();
-
-    // override with user defined properties
-    Map<String, String> userProperties = conf.getValByRegex(DBCP_CONFIG_PREFIX + "\\.*");
-    if ((userProperties != null) && (!userProperties.isEmpty())) {
-      for (Entry<String, String> entry : userProperties.entrySet()) {
-        dbProperties.put(entry.getKey().replaceFirst(DBCP_CONFIG_PREFIX + "\\.", ""), entry.getValue());
-      }
-    }
-
-    // handle password
-    Credentials credentials = UserGroupInformation.getCurrentUser().getCredentials();
-    if (credentials.getSecretKey(DBCP_PWD) != null) {
-      LOGGER.info("found token in credentials");
-      dbProperties.put(DBCP_PWD,new String(credentials.getSecretKey(DBCP_PWD)));
-    }
-
-    // essential properties that shouldn't be overridden by users
-    dbProperties.put("url", conf.get(JdbcStorageConfig.JDBC_URL.getPropertyName()));
-    dbProperties.put("driverClassName", conf.get(JdbcStorageConfig.JDBC_DRIVER_CLASS.getPropertyName()));
-    dbProperties.put("type", "javax.sql.DataSource");
-    return dbProperties;
-  }
-
-
-  protected Properties getDefaultDBCPProperties() {
-    Properties props = new Properties();
-    props.put("initialSize", "1");
-    props.put("maxActive", "3");
-    props.put("maxIdle", "0");
-    props.put("maxWait", "10000");
-    props.put("timeBetweenEvictionRunsMillis", "30000");
-    return props;
   }
 
 

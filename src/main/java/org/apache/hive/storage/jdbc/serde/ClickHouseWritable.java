@@ -1,4 +1,4 @@
-package org.apache.hive.storage.jdbc.clickhouse;
+package org.apache.hive.storage.jdbc.serde;
 
 import org.apache.hadoop.io.Writable;
 
@@ -9,6 +9,7 @@ import java.util.Map;
 
 /**
  * Represents the serialized data getting from Hive.
+ * @author simo
  */
 public class ClickHouseWritable implements Writable {
     Map<String, Object> value;

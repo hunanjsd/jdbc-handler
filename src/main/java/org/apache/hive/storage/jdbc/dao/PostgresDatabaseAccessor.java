@@ -17,11 +17,18 @@
  */
 package org.apache.hive.storage.jdbc.dao;
 
+import org.apache.hadoop.conf.Configuration;
+
 /**
  * Postgres specific data accessor. Postgres JDBC drivers do not support generic LIMIT and OFFSET
  * escape functions
  */
 public class PostgresDatabaseAccessor extends GenericJdbcDatabaseAccessor {
+
+
+  public PostgresDatabaseAccessor(Configuration configuration) {
+    super(configuration);
+  }
 
   @Override
   protected String addLimitAndOffsetToQuery(String sql, int limit, int offset) {

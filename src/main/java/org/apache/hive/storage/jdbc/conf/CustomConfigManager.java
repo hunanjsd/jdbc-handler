@@ -16,6 +16,9 @@ package org.apache.hive.storage.jdbc.conf;
 
 import java.util.Properties;
 
+/**
+ * @author simo
+ */
 public interface CustomConfigManager {
 
   void checkRequiredProperties(Properties properties);

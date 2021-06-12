@@ -21,7 +21,6 @@ import org.apache.hadoop.hive.serde2.SerDeException;
 import org.apache.hadoop.hive.serde2.SerDeStats;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.ObjectInspectorFactory;
-import org.apache.hadoop.hive.serde2.objectinspector.StructField;
 import org.apache.hadoop.hive.serde2.objectinspector.StructObjectInspector;
 import org.apache.hadoop.hive.serde2.objectinspector.primitive.*;
 import org.apache.hadoop.hive.serde2.typeinfo.PrimitiveTypeInfo;
@@ -31,7 +30,9 @@ import org.apache.hadoop.io.MapWritable;
 import org.apache.hadoop.io.ObjectWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.io.Writable;
-import org.apache.hive.storage.jdbc.clickhouse.ClickHouseWritable;
+import org.apache.hive.storage.jdbc.conf.DatabaseType;
+import org.apache.hive.storage.jdbc.serde.JdbcSerDeImpl;
+import org.apache.hive.storage.jdbc.serde.JdbcSerDeImplFactory;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -52,25 +53,28 @@ public class JdbcSerDe extends AbstractSerDe {
   private PrimitiveTypeInfo[] types;
   private List<String> columnNames;
   private List<Object> row;
+  private Configuration tableConfig;
+  private Properties tableProperties;
 
 
-  /*
+  /**
    * This method gets called multiple times by Hive. On some invocations, the properties will be empty.
-   * We need to detect when the properties are not empty to initialise the class variables.
-   *
-   * @see org.apache.hadoop.hive.serde2.Deserializer#initialize(org.apache.hadoop.conf.Configuration, java.util.Properties)
+   *  We need to detect when the properties are not empty to initialise the class variables.
+   *  @see org.apache.hadoop.hive.serde2.Deserializer#initialize(org.apache.hadoop.conf.Configuration, java.util.Properties)
+   * @param conf
+   * @param tbl
+   * @throws SerDeException
    */
   @Override
   public void initialize(Configuration conf, Properties tbl) throws SerDeException {
     try {
       LOGGER.trace("Initializing the SerDe");
+      this.tableProperties = tbl;
+      if (this.tableProperties.containsKey(JdbcStorageConfig.DATABASE_TYPE.getPropertyName())) {
 
-      if (tbl.containsKey(JdbcStorageConfig.DATABASE_TYPE.getPropertyName())) {
-
-        Configuration tableConfig = JdbcStorageConfigManager.convertPropertiesToConfiguration(tbl);
-
+        this.tableConfig = JdbcStorageConfigManager.convertPropertiesToConfiguration(tbl);
         DatabaseAccessor dbAccessor = DatabaseAccessorFactory.getAccessor(tableConfig);
-        columnNames = dbAccessor.getColumnNames(tableConfig);
+        columnNames = dbAccessor.getColumnNames();
         numColumns = columnNames.size();
         List<String> hiveColumnNames;
 
@@ -98,10 +102,9 @@ public class JdbcSerDe extends AbstractSerDe {
         objectInspector =
           ObjectInspectorFactory.getStandardStructObjectInspector(hiveColumnNames,
               fieldInspectors);
-        row = new ArrayList<Object>(numColumns);
+        row = new ArrayList<>(numColumns);
       }
-    }
-    catch (Exception e) {
+    }catch (Exception e) {
       LOGGER.error("Caught exception while initializing the SqlSerDe", e);
       throw new SerDeException(e);
     }
@@ -161,66 +164,10 @@ public class JdbcSerDe extends AbstractSerDe {
               + objectInspector.getTypeName());
     }
 
-    StructObjectInspector soi = (StructObjectInspector) objectInspector;
-    List<? extends StructField> fields = soi.getAllStructFieldRefs();
-    List<Object> values = soi.getStructFieldsDataAsList(obj);
-
-    final Map<String, Object> value = new HashMap<>();
-    for (int i = 0; i < columnNames.size(); i++) {
-      if (values.get(i) == null) {
-        // null, we just add it
-        value.put(columnNames.get(i), null);
-        continue;
-      }
-      final Object res;
-      switch (types[i].getPrimitiveCategory()) {
-        case TIMESTAMP:
-          res = ((TimestampObjectInspector) fields.get(i).getFieldObjectInspector())
-                  .getPrimitiveJavaObject(values.get(i));
-          break;
-        case BYTE:
-          res = ((ByteObjectInspector) fields.get(i).getFieldObjectInspector()).get(values.get(i));
-          break;
-        case SHORT:
-          res = ((ShortObjectInspector) fields.get(i).getFieldObjectInspector()).get(values.get(i));
-          break;
-        case INT:
-          res = ((IntObjectInspector) fields.get(i).getFieldObjectInspector()).get(values.get(i));
-          break;
-        case LONG:
-          res = ((LongObjectInspector) fields.get(i).getFieldObjectInspector()).get(values.get(i));
-          break;
-        case FLOAT:
-          res = ((FloatObjectInspector) fields.get(i).getFieldObjectInspector()).get(values.get(i));
-          break;
-        case DOUBLE:
-          res = ((DoubleObjectInspector) fields.get(i).getFieldObjectInspector()).get(values.get(i));
-          break;
-        case CHAR:
-          res = ((HiveCharObjectInspector) fields.get(i).getFieldObjectInspector())
-                  .getPrimitiveJavaObject(values.get(i)).getValue();
-          break;
-        case VARCHAR:
-          res = ((HiveVarcharObjectInspector) fields.get(i).getFieldObjectInspector())
-                  .getPrimitiveJavaObject(values.get(i)).getValue();
-          break;
-        case STRING:
-          res = ((StringObjectInspector) fields.get(i).getFieldObjectInspector())
-                  .getPrimitiveJavaObject(values.get(i));
-          break;
-        case DATE:
-          res = ((DateObjectInspector) fields.get(i).getFieldObjectInspector())
-                  .getPrimitiveJavaObject(values.get(i));
-          break;
-        default:
-          throw new SerDeException("Unsupported type: " + types[i].getPrimitiveCategory());
-      }
-      value.put(columnNames.get(i), res);
-    }
-    return new ClickHouseWritable(value);
-//    throw new UnsupportedOperationException("Writes are not allowed");
+    DatabaseType dbType = DatabaseType.valueOf(this.tableProperties.getProperty(JdbcStorageConfig.DATABASE_TYPE.getPropertyName()));
+    JdbcSerDeImpl jdbcSerDe = JdbcSerDeImplFactory.getJdbcSerDeImpl(dbType);
+    return jdbcSerDe.getSerialize(obj, objectInspector, types, columnNames);
   }
-
 
   @Override
   public SerDeStats getSerDeStats() {

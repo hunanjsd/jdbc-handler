@@ -1,5 +1,7 @@
 package org.apache.hive.storage.jdbc.dao;
 
+import org.apache.hadoop.conf.Configuration;
+
 /**
  * @className: ClickhouseDatabaseAccessor
  * @description: Clickhouse specific data accessor
@@ -7,6 +9,11 @@ package org.apache.hive.storage.jdbc.dao;
  * @date: 2021/5/14
  **/
 public class ClickhouseDatabaseAccessor extends GenericJdbcDatabaseAccessor {
+
+
+    public ClickhouseDatabaseAccessor(Configuration configuration) {
+        super(configuration);
+    }
 
     @Override
     protected String addLimitAndOffsetToQuery(String sql, int limit, int offset) {

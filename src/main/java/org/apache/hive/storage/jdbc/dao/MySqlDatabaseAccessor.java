@@ -14,11 +14,19 @@
  */
 package org.apache.hive.storage.jdbc.dao;
 
+
+import org.apache.hadoop.conf.Configuration;
+
 /**
  * MySQL specific data accessor. This is needed because MySQL JDBC drivers do not support generic LIMIT and OFFSET
  * escape functions
  */
 public class MySqlDatabaseAccessor extends GenericJdbcDatabaseAccessor {
+
+
+  public MySqlDatabaseAccessor(Configuration configuration) {
+    super(configuration);
+  }
 
   @Override
   protected String addLimitAndOffsetToQuery(String sql, int limit, int offset) {

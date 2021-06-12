@@ -28,6 +28,11 @@ import org.apache.hive.storage.jdbc.conf.JdbcStorageConfigManager;
 
 public class JethroDatabaseAccessor extends GenericJdbcDatabaseAccessor {
 
+
+  public JethroDatabaseAccessor(Configuration configuration) {
+    super(configuration);
+  }
+
   @Override
   protected String addLimitAndOffsetToQuery(String sql, int limit, int offset) {
     if (offset == 0) {

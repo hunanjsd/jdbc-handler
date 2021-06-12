@@ -15,7 +15,6 @@
 package org.apache.hive.storage.jdbc.dao;
 
 import org.apache.hadoop.conf.Configuration;
-
 import org.apache.hive.storage.jdbc.conf.DatabaseType;
 import org.apache.hive.storage.jdbc.conf.JdbcStorageConfig;
 
@@ -28,35 +27,35 @@ public class DatabaseAccessorFactory {
   }
 
 
-  public static DatabaseAccessor getAccessor(DatabaseType dbType) {
+  private static AbstractDatabaseAccessor getAccessor(DatabaseType dbType, Configuration configuration) {
 
-    DatabaseAccessor accessor = null;
+    AbstractDatabaseAccessor accessor = null;
     switch (dbType) {
     case MYSQL:
-      accessor = new MySqlDatabaseAccessor();
+      accessor = new MySqlDatabaseAccessor(configuration);
       break;
     case JETHRO_DATA:
-      accessor = new JethroDatabaseAccessor();
+      accessor = new JethroDatabaseAccessor(configuration);
       break;
 
     case POSTGRES:
-      accessor = new PostgresDatabaseAccessor();
+      accessor = new PostgresDatabaseAccessor(configuration);
       break;
 
     case ORACLE:
-      accessor = new OracleDatabaseAccessor();
+      accessor = new OracleDatabaseAccessor(configuration);
       break;
 
     case MSSQL:
-      accessor = new MsSqlDatabaseAccessor();
+      accessor = new MsSqlDatabaseAccessor(configuration);
       break;
 
     case CLICKHOUSE:
-      accessor = new ClickhouseDatabaseAccessor();
+      accessor = new ClickhouseDatabaseAccessor(configuration);
       break;
 
     default:
-      accessor = new GenericJdbcDatabaseAccessor();
+      accessor = new GenericJdbcDatabaseAccessor(configuration);
       break;
     }
 
@@ -64,10 +63,11 @@ public class DatabaseAccessorFactory {
   }
 
 
-  public static DatabaseAccessor getAccessor(Configuration conf) {
+  public static AbstractDatabaseAccessor getAccessor(Configuration conf) {
     DatabaseType dbType = DatabaseType.valueOf(
         conf.get(JdbcStorageConfig.DATABASE_TYPE.getPropertyName()).toUpperCase());
-    return getAccessor(dbType);
+    return getAccessor(dbType, conf);
   }
+
 
 }

@@ -1,7 +1,9 @@
-package org.apache.hive.storage.jdbc.clickhouse;
+package org.apache.hive.storage.jdbc.serde;
 
+import org.apache.commons.lang.StringUtils;
 import org.apache.hadoop.hive.ql.exec.FileSinkOperator.RecordWriter;
 import org.apache.hadoop.io.Writable;
+import org.apache.hive.storage.jdbc.dao.AbstractDatabaseAccessor;
 import org.joda.time.DateTime;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -14,37 +16,36 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 
+/**
+ * @author simo
+ */
 public class ClickHouseRecordWriter implements RecordWriter {
     private static Logger logger = LoggerFactory.getLogger(ClickHouseRecordWriter.class);
     private final int batchSize;
-    // the column names of the remote clickhouse table
     private final List<String> clickhouseColNames;
-    // the column types of the remote clickhouse table
     private final List<String> clickhouseColTypes;
     private final String insertQuery;
-    private final ClickHouseHelper clickHouseHelper;
+    private final AbstractDatabaseAccessor databaseAccessor;
 
     private ArrayList<Map<String, Object>> data = new ArrayList<>();
 
-    public ClickHouseRecordWriter(ClickHouseHelper helper, int batchSize, String tableName, List<String> columnNames,
-                                  List<String> columnTypes) {
+    public ClickHouseRecordWriter(AbstractDatabaseAccessor databaseAccessor, int batchSize, String tableName) {
         this.batchSize = batchSize;
-        this.clickhouseColNames = columnNames;
-        this.clickhouseColTypes = columnTypes;
-        this.insertQuery = constructInsertQuery(tableName, columnNames);
-        this.clickHouseHelper = helper;
-
+        this.clickhouseColNames = databaseAccessor.getColumnNames();
+        this.clickhouseColTypes = databaseAccessor.getColumnTypes();
+        this.insertQuery = constructInsertQuery(tableName, databaseAccessor.getColumnNames());
+        this.databaseAccessor = databaseAccessor;
     }
 
     public static String constructInsertQuery(String tableName, List<String> columnNames) {
         StringBuilder sql = new StringBuilder();
         sql.append("INSERT INTO ").append(tableName).append(" ");
 
-        String fields = StringUtil.join(columnNames.toArray(), ",");
+        String fields = StringUtils.join(columnNames.toArray(), ",");
         String[] valueSlice = new String[columnNames.size()];
         Arrays.fill(valueSlice, "?");
 
-        String values = StringUtil.join(valueSlice, ",");
+        String values = StringUtils.join(valueSlice, ",");
         sql.append("(").append(fields).append(") VALUES (").append(values).append(")");
         return sql.toString();
     }
@@ -143,7 +144,7 @@ public class ClickHouseRecordWriter implements RecordWriter {
         Connection connection = null;
         PreparedStatement statement = null;
         try {
-            connection = clickHouseHelper.getClickHouseConnection();
+            connection =  databaseAccessor.getDbcpDataSource().getConnection();
             statement = connection.prepareStatement(this.insertQuery);
 
             for (Map<String, Object> value : data) {

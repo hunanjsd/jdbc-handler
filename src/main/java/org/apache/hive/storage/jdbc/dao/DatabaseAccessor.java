@@ -22,7 +22,9 @@ import java.util.List;
 
 public interface DatabaseAccessor {
 
-  List<String> getColumnNames(Configuration conf) throws HiveJdbcDatabaseAccessException;
+  List<String> getColumnNames();
+
+  List<String> getColumnTypes();
 
   int getTotalNumberOfRecords(Configuration conf) throws HiveJdbcDatabaseAccessException;
 

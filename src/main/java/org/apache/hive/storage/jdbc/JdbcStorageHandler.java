@@ -40,6 +40,7 @@ public class JdbcStorageHandler implements HiveStorageHandler {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JdbcStorageHandler.class);
   private Configuration conf;
+  private JobConf jobConf;
 
 
   @Override
@@ -70,6 +71,7 @@ public class JdbcStorageHandler implements HiveStorageHandler {
 
   @Override
   public Class<? extends AbstractSerDe> getSerDeClass() {
+
     return JdbcSerDe.class;
   }
 
@@ -124,6 +126,7 @@ public class JdbcStorageHandler implements HiveStorageHandler {
   @Override
   public void configureJobConf(TableDesc tableDesc, JobConf jobConf) {
 
+    this.jobConf = jobConf;
     List<Class<?>> classesToLoad = new ArrayList<>();
     classesToLoad.add(org.apache.hive.storage.jdbc.JdbcInputSplit.class);
     classesToLoad.add(org.apache.commons.dbcp.BasicDataSourceFactory.class);
