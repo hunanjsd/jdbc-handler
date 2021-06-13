@@ -29,9 +29,6 @@ public class ClickhouseRecordWrite implements RecordWriteImpl{
     public static final int DEFAULT_BATCH_SIZE = 500;
     @Override
     public FileSinkOperator.RecordWriter getRecordWrite(Properties tblProps) throws Exception {
-        LOGGER.info("Table Properties");
-        DatabaseType dbType = DatabaseType.valueOf(tblProps.getProperty(JdbcStorageConfig.DATABASE_TYPE.getPropertyName()));
-
         Set<Map.Entry<Object, Object>> entries = tblProps.entrySet();
         for (Map.Entry<Object, Object> entry: entries) {
             LOGGER.info(entry.getKey() + " : " + entry.getValue());

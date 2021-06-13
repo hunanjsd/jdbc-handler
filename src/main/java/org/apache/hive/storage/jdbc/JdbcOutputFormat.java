@@ -49,15 +49,16 @@ public class JdbcOutputFormat implements OutputFormat<NullWritable, MapWritable>
       Class<? extends Writable> valueClass,
       boolean isCompressed,
       Properties tblProps,
-      Progressable progress) {
+      Progressable progress) throws IOException {
 
     DatabaseType dbType = DatabaseType.valueOf(tblProps.getProperty(JdbcStorageConfig.DATABASE_TYPE.getPropertyName()));
     RecordWriteImpl recordWrite = RecordWriteFactory.getRecordWrite(dbType);
+
     try {
       return recordWrite.getRecordWrite(tblProps);
     } catch (Exception e) {
       logger.error("---------- getHiveRecordWriter", e);
-      return null;
+      throw new IOException();
     }
   }
 

@@ -16,6 +16,7 @@ public class JdbcSerDeImplFactory {
 
         JdbcSerDeImpl jdbcSerDe;
         switch (dbType) {
+            // 目前只支持 Clickhouse 写入
             case CLICKHOUSE:
                 jdbcSerDe =  new ClickhouseJdbcSerDeImpl();
                 break;

@@ -20,7 +20,7 @@ public interface RecordWriteImpl {
      * todo
      * @param tblProps
      * @return
-     * @throws IOException
+     * @throws Exception
      */
     FileSinkOperator.RecordWriter getRecordWrite(Properties tblProps) throws Exception;
 }
