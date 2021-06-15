@@ -48,11 +48,11 @@ public abstract class AbstractDatabaseAccessor implements DatabaseAccessor{
 
     protected void initializeDatabaseConnection() {
         try {
-            if (dbcpDataSource == null) {
+            if (this.dbcpDataSource == null) {
                 synchronized (this) {
-                    if (dbcpDataSource == null) {
+                    if (this.dbcpDataSource == null) {
                         Properties props = getConnectionPoolProperties(this.configuration);
-                        dbcpDataSource = BasicDataSourceFactory.createDataSource(props);
+                        this.dbcpDataSource = BasicDataSourceFactory.createDataSource(props);
                     }
                 }
             }

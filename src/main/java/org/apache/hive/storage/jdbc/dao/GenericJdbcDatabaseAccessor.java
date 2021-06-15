@@ -37,7 +37,6 @@ public class GenericJdbcDatabaseAccessor extends AbstractDatabaseAccessor {
 
   protected static final int DEFAULT_FETCH_SIZE = 1000;
   protected static final Logger LOGGER = LoggerFactory.getLogger(GenericJdbcDatabaseAccessor.class);
-  protected DataSource dbcpDataSource = null;
 
   public GenericJdbcDatabaseAccessor(Configuration configuration) {
     super(configuration);
@@ -67,7 +66,7 @@ public class GenericJdbcDatabaseAccessor extends AbstractDatabaseAccessor {
       String countQuery = "SELECT COUNT(*) FROM (" + sql + ") tmptable";
       LOGGER.info("Query to execute is [{}]", countQuery);
 
-      conn = dbcpDataSource.getConnection();
+      conn = this.dbcpDataSource.getConnection();
       ps = conn.prepareStatement(countQuery);
       rs = ps.executeQuery();
       if (rs.next()) {
