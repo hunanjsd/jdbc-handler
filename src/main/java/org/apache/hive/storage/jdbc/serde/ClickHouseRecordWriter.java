@@ -10,6 +10,7 @@ import org.slf4j.LoggerFactory;
 import parquet.Preconditions;
 
 import java.io.IOException;
+import java.math.BigDecimal;
 import java.sql.*;
 import java.util.ArrayList;
 import java.util.Arrays;
@@ -20,14 +21,16 @@ import java.util.Map;
  * @author simo
  */
 public class ClickHouseRecordWriter implements RecordWriter {
-    private static Logger logger = LoggerFactory.getLogger(ClickHouseRecordWriter.class);
+    private static final Logger LOGGER = LoggerFactory.getLogger(ClickHouseRecordWriter.class);
     private final int batchSize;
     private final List<String> clickhouseColNames;
     private final List<String> clickhouseColTypes;
     private final String insertQuery;
     private final AbstractDatabaseAccessor databaseAccessor;
 
-    private ArrayList<Map<String, Object>> data = new ArrayList<>();
+    private final ArrayList<Map<String, Object>> data = new ArrayList<>();
+
+    private long recordCoutner = 0L;
 
     public ClickHouseRecordWriter(AbstractDatabaseAccessor databaseAccessor, int batchSize, String tableName) {
         this.batchSize = batchSize;
@@ -60,39 +63,43 @@ public class ClickHouseRecordWriter implements RecordWriter {
             Object obj = value.containsKey(columnName) ? value.get(columnName) : null;
             if (obj != null) {
                 switch (columnType) {
-                case "Int8":
-                case "UInt8":
-                    stmt.setByte(i + 1, (byte) obj);
-                    break;
-                case "Int16":
-                case "UInt16":
-                    stmt.setShort(i + 1, (short) obj);
-                    break;
-                case "Int32":
-                case "UInt32":
-                    stmt.setInt(i + 1, (int) obj);
-                    break;
-                case "Int64":
-                case "UInt64":
-                    stmt.setLong(i + 1, (long) obj);
-                    break;
-                case "Float32":
-                    stmt.setFloat(i + 1, (float) obj);
-                    break;
-                case "Float64":
-                    stmt.setDouble(i + 1, (double) obj);
-                    break;
-                case "String":
-                    stmt.setString(i + 1, (String) obj);
-                    break;
-                case "DateTime":
-                    stmt.setTimestamp(i + 1, (Timestamp) obj);
-                    break;
-                case "Date":
-                    stmt.setDate(i + 1, (Date) obj);
-                    break;
-                default:
-                    throw new SQLException(String.format("Un-supported type %s", columnType));
+                    case "Int8":
+                    case "UInt8":
+                        stmt.setByte(i + 1, (byte) obj);
+                        break;
+                    case "Int16":
+                    case "UInt16":
+                        stmt.setShort(i + 1, (short) obj);
+                        break;
+                    case "Int32":
+                    case "UInt32":
+                        stmt.setInt(i + 1, (int) obj);
+                        break;
+                    case "Int64":
+                    case "UInt64":
+                        stmt.setLong(i + 1, (long) obj);
+                        break;
+                    case "Float32":
+                        stmt.setFloat(i + 1, (float) obj);
+                        break;
+                    case "Float64":
+                        stmt.setDouble(i + 1, (double) obj);
+                        break;
+                    case "String":
+                        stmt.setString(i + 1, (String) obj);
+                        break;
+                    case "DateTime":
+                        stmt.setTimestamp(i + 1, (Timestamp) obj);
+                        break;
+                    case "Date":
+                        stmt.setDate(i + 1, (Date) obj);
+                        break;
+                    default:
+                        if(columnType.toUpperCase().contains("DECIMAL")){
+                            stmt.setBigDecimal(i + 1, (BigDecimal)obj);
+                        }else {
+                            throw new SQLException(String.format("Un-supported type %s", columnType));
+                        }
                 }
             } else {
                 switch (columnType) {
@@ -128,7 +135,11 @@ public class ClickHouseRecordWriter implements RecordWriter {
                     stmt.setDate(i + 1, new Date(DateTime.now().getMillis()));
                     break;
                 default:
-                    throw new SQLException(String.format("Un-supported type %s", columnType));
+                    if(columnType.toUpperCase().contains("DECIMAL")){
+                        stmt.setBigDecimal(i + 1, new BigDecimal(0));
+                    }else {
+                        throw new SQLException(String.format("Un-supported type %s", columnType));
+                    }
                 }
             }
 
@@ -152,7 +163,8 @@ public class ClickHouseRecordWriter implements RecordWriter {
             }
             statement.executeBatch();
 
-            logger.info("Flushed " + data.size() + " rows of data");
+            recordCoutner += data.size();
+            LOGGER.info(String.format("Flushed %s rows of data, total flushed %s row of data.", data.size(), recordCoutner));
         } catch (SQLException e) {
             throw new IOException(e);
         } finally {
@@ -164,7 +176,7 @@ public class ClickHouseRecordWriter implements RecordWriter {
                     connection.close();
                 }
             } catch (SQLException e) {
-                logger.error("Error closing resource", e);
+                LOGGER.error("Error closing resource", e);
             }
         }
     }
@@ -176,7 +188,7 @@ public class ClickHouseRecordWriter implements RecordWriter {
                     doFlush();
                     break;
                 } catch (Exception e) {
-                    logger.error("Error flushing, retrying", e);
+                    LOGGER.error("Error flushing, retrying", e);
                 }
             }
         } finally {
@@ -196,7 +208,7 @@ public class ClickHouseRecordWriter implements RecordWriter {
 
     @Override
     public void close(boolean abort) throws IOException {
-        logger.info("Closing Writer, flush remaining: " + data.size());
+        LOGGER.info("Closing Writer, flush remaining: " + data.size());
         flush(3);
     }
 }

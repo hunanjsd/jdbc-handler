@@ -5,7 +5,6 @@ import org.apache.hadoop.hive.ql.exec.FileSinkOperator;
 import org.apache.hive.storage.jdbc.conf.JdbcStorageConfigManager;
 import org.apache.hive.storage.jdbc.dao.AbstractDatabaseAccessor;
 import org.apache.hive.storage.jdbc.serde.ClickHouseRecordWriter;
-import org.apache.hive.storage.jdbc.conf.DatabaseType;
 import org.apache.hive.storage.jdbc.conf.JdbcStorageConfig;
 import org.apache.hive.storage.jdbc.dao.DatabaseAccessorFactory;
 import org.slf4j.Logger;
@@ -41,14 +40,14 @@ public class ClickhouseRecordWrite implements RecordWriteImpl{
             throw new IOException(JdbcStorageConfig.JDBC_URL.getPropertyName() + " must be set in TBLPROPERTIES");
         }
 
-        if (tblName == null || tblName == "") {
+        if (tblName == null || tblName.equals("")) {
             throw new IOException(JdbcStorageConfig.TABLE.getPropertyName() + " must be set in TBLPROPERTIES");
         }
 
         String batchSizeStr = tblProps.getProperty(JdbcStorageConfig.JDBC_FETCH_SIZE.getPropertyName());
         int batchSize = 0;
         try {
-            if (batchSizeStr == null || batchSizeStr == "") {
+            if (batchSizeStr == null || batchSizeStr.equals("")) {
                 batchSize = DEFAULT_BATCH_SIZE;
             } else {
                 batchSize = Integer.parseInt(batchSizeStr);

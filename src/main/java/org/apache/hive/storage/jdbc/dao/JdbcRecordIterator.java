@@ -73,43 +73,49 @@ public class JdbcRecordIterator implements Iterator<Map<String, Object>> {
       for (int i = 0; i < numColumns; i++) {
         String key = metadata.getColumnName(i + 1);
         Object value;
+//        LOGGER.error(String.format(" ---------- columnType: %s, key: %s, value: %s", columnTypes.get(i).getTypeName(), key, rs.getObject(i + 1)));
         if (columnTypes!=null && columnTypes.get(i) instanceof PrimitiveTypeInfo) {
           // This is not a complete list, barely make information schema work
-          switch (((PrimitiveTypeInfo)columnTypes.get(i)).getTypeName()) {
-          case "int":
-          case "smallint":
-          case "tinyint":
-            value = rs.getInt(i + 1);
-            break;
-          case "bigint":
-            value = rs.getLong(i + 1);
-            break;
-          case "float":
-            value = rs.getFloat(i + 1);
-            break;
-          case "double":
-            value = rs.getDouble(i + 1);
-            break;
-          case "bigdecimal":
-            value = HiveDecimal.create(rs.getBigDecimal(i + 1));
-            break;
-          case "boolean":
-            value = rs.getBoolean(i + 1);
-            break;
-          case "string":
-          case "char":
-          case "varchar":
-            value = rs.getString(i + 1);
-            break;
-          case "datetime":
-            value = rs.getDate(i + 1);
-            break;
-          case "timestamp":
-            value = rs.getTimestamp(i + 1);
-            break;
-          default:
-            value = rs.getObject(i + 1);
-            break;
+          String columnType = columnTypes.get(i).getTypeName();
+          switch (columnType) {
+            case "int":
+            case "smallint":
+            case "tinyint":
+              value = rs.getInt(i + 1);
+              break;
+            case "bigint":
+              value = rs.getLong(i + 1);
+              break;
+            case "float":
+              value = rs.getFloat(i + 1);
+              break;
+            case "double":
+              value = rs.getDouble(i + 1);
+              break;
+            case "decimal":
+              value = HiveDecimal.create(rs.getBigDecimal(i + 1));
+              break;
+            case "boolean":
+              value = rs.getBoolean(i + 1);
+              break;
+            case "string":
+            case "char":
+            case "varchar":
+              value = rs.getString(i + 1);
+              break;
+            case "datetime":
+              value = rs.getDate(i + 1);
+              break;
+            case "timestamp":
+              value = rs.getTimestamp(i + 1);
+              break;
+            default:
+              if(columnType.toUpperCase().contains("DECIMAL")){
+                value = HiveDecimal.create(rs.getBigDecimal(i + 1));
+              }else {
+                value = rs.getObject(i + 1);
+              }
+              break;
           }
         } else {
           value = rs.getObject(i + 1);
