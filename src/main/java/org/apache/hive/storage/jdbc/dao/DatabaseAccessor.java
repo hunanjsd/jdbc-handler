@@ -17,8 +17,10 @@ package org.apache.hive.storage.jdbc.dao;
 import org.apache.hadoop.conf.Configuration;
 
 import org.apache.hive.storage.jdbc.exception.HiveJdbcDatabaseAccessException;
+import org.apache.hive.storage.jdbc.split.ColumnSplitConfig;
 
 import java.util.List;
+import java.util.Map;
 
 public interface DatabaseAccessor {
 
@@ -28,7 +30,13 @@ public interface DatabaseAccessor {
 
   int getTotalNumberOfRecords(Configuration conf) throws HiveJdbcDatabaseAccessException;
 
-  JdbcRecordIterator
-    getRecordIterator(Configuration conf, int limit, int offset) throws HiveJdbcDatabaseAccessException;
+  JdbcRecordIterator getRecordIterator(Configuration conf, int limit, int offset) throws HiveJdbcDatabaseAccessException;
 
+//  JdbcRecordIterator getRecordIterator(Configuration conf, ColumnSplitConfig columnSplitConfig) throws HiveJdbcDatabaseAccessException;
+
+  JdbcRecordIterator getRecordIterator(Configuration conf, String columnType, String columnName, Object minValue, Object maxValue) throws HiveJdbcDatabaseAccessException;
+
+  Map<String , Object > getSplitColumnInfo(Configuration conf, String splitColumn) throws HiveJdbcDatabaseAccessException;
+
+  List<ColumnSplitConfig> getColumnSplitInfo(Configuration conf, String splitColumn, Integer partitionNum) throws HiveJdbcDatabaseAccessException;
 }

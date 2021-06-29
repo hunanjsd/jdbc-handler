@@ -31,7 +31,7 @@ public abstract class AbstractDatabaseAccessor implements DatabaseAccessor{
     protected static final Text DBCP_PWD = new Text(DBCP_CONFIG_PREFIX + ".password");
     protected List<String> columnNames = new ArrayList<>();
     protected List<String> columnTypes = new ArrayList<>();
-    protected HashMap<String, String> nameTypeMap = new HashMap<>();
+    protected HashMap<String, String> nameTypeMap = null;
     protected DataSource dbcpDataSource = null;
     protected Configuration configuration;
 
@@ -75,7 +75,7 @@ public abstract class AbstractDatabaseAccessor implements DatabaseAccessor{
         Connection conn = null;
         PreparedStatement ps = null;
         ResultSet rs = null;
-
+        nameTypeMap = new HashMap<>();
         try {
             initializeDatabaseConnection();
             String metadataQuery = getMetaDataQuery(conf);

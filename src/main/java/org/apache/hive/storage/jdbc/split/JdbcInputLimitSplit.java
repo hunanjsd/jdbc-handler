@@ -12,7 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hive.storage.jdbc;
+package org.apache.hive.storage.jdbc.split;
 
 import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.mapred.FileSplit;
@@ -22,7 +22,7 @@ import java.io.DataInput;
 import java.io.DataOutput;
 import java.io.IOException;
 
-public class JdbcInputSplit extends FileSplit implements InputSplit {
+public class JdbcInputLimitSplit extends FileSplit implements InputSplit {
 
   private static final String[] EMPTY_ARRAY = new String[] {};
 
@@ -30,20 +30,20 @@ public class JdbcInputSplit extends FileSplit implements InputSplit {
   private int offset = 0;
 
 
-  public JdbcInputSplit() {
+  public JdbcInputLimitSplit() {
     super((Path) null, 0, 0, EMPTY_ARRAY);
 
   }
 
 
-  public JdbcInputSplit(long start, long end, Path dummyPath) {
+  public JdbcInputLimitSplit(long start, long end, Path dummyPath) {
     super(dummyPath, 0, 0, EMPTY_ARRAY);
     this.setLimit((int) start);
     this.setOffset((int) end);
   }
 
 
-  public JdbcInputSplit(int limit, int offset) {
+  public JdbcInputLimitSplit(int limit, int offset) {
     super((Path) null, 0, 0, EMPTY_ARRAY);
     this.limit = limit;
     this.offset = offset;

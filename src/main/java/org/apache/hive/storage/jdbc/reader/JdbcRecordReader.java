@@ -12,52 +12,43 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-package org.apache.hive.storage.jdbc;
+package org.apache.hive.storage.jdbc.reader;
 
-import org.apache.hadoop.io.LongWritable;
-import org.apache.hadoop.io.NullWritable;
-import org.apache.hadoop.io.MapWritable;
-import org.apache.hadoop.io.ObjectWritable;
-import org.apache.hadoop.io.Text;
+import org.apache.hadoop.io.*;
 import org.apache.hadoop.mapred.JobConf;
 import org.apache.hadoop.mapred.RecordReader;
+import org.apache.hive.storage.jdbc.dao.DatabaseAccessor;
+import org.apache.hive.storage.jdbc.dao.JdbcRecordIterator;
+import org.apache.hive.storage.jdbc.exception.HiveJdbcDatabaseAccessException;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
-import org.apache.hive.storage.jdbc.dao.DatabaseAccessor;
-import org.apache.hive.storage.jdbc.dao.DatabaseAccessorFactory;
-import org.apache.hive.storage.jdbc.dao.JdbcRecordIterator;
 
 import java.io.IOException;
 import java.util.Map;
 import java.util.Map.Entry;
 
-public class JdbcRecordReader implements RecordReader<LongWritable, MapWritable> {
+public abstract class JdbcRecordReader implements RecordReader<LongWritable, MapWritable> {
 
   private static final Logger LOGGER = LoggerFactory.getLogger(JdbcRecordReader.class);
-  private DatabaseAccessor dbAccessor = null;
-  private JdbcRecordIterator iterator = null;
-  private JdbcInputSplit split = null;
-  private JobConf conf = null;
-  private int pos = 0;
+  public DatabaseAccessor dbAccessor = null;
+  public JdbcRecordIterator iterator = null;
+  public final JobConf conf;
+  public int pos = 0;
 
 
-  public JdbcRecordReader(JobConf conf, JdbcInputSplit split) {
+  public JdbcRecordReader(JobConf conf) {
     LOGGER.trace("Initializing JdbcRecordReader");
-    this.split = split;
     this.conf = conf;
   }
+
+  abstract JdbcRecordIterator getIterator() throws HiveJdbcDatabaseAccessException;
 
 
   @Override
   public boolean next(LongWritable key, MapWritable value) throws IOException {
     try {
       LOGGER.trace("JdbcRecordReader.next called");
-      if (dbAccessor == null) {
-        dbAccessor = DatabaseAccessorFactory.getAccessor(conf);
-        iterator = dbAccessor.getRecordIterator(conf, split.getLimit(), split.getOffset());
-      }
-
+      iterator = getIterator();
       if (iterator.hasNext()) {
         LOGGER.trace("JdbcRecordReader has more records to read.");
         key.set(pos);
@@ -79,8 +70,7 @@ public class JdbcRecordReader implements RecordReader<LongWritable, MapWritable>
         LOGGER.debug("JdbcRecordReader has no more records to read.");
         return false;
       }
-    }
-    catch (Exception e) {
+    }catch (Exception e) {
       LOGGER.error("An error occurred while reading the next record from DB.", e);
       return false;
     }
@@ -111,18 +101,6 @@ public class JdbcRecordReader implements RecordReader<LongWritable, MapWritable>
       iterator.close();
     }
   }
-
-
-  @Override
-  public float getProgress() throws IOException {
-    if (split == null) {
-      return 0;
-    }
-    else {
-      return split.getLength() > 0 ? pos / (float) split.getLength() : 1.0f;
-    }
-  }
-
 
   public void setDbAccessor(DatabaseAccessor dbAccessor) {
     this.dbAccessor = dbAccessor;

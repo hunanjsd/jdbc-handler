@@ -128,7 +128,8 @@ public class JdbcStorageHandler implements HiveStorageHandler {
 
     this.jobConf = jobConf;
     List<Class<?>> classesToLoad = new ArrayList<>();
-    classesToLoad.add(org.apache.hive.storage.jdbc.JdbcInputSplit.class);
+    classesToLoad.add(org.apache.hive.storage.jdbc.split.JdbcInputLimitSplit.class);
+    classesToLoad.add(org.apache.hive.storage.jdbc.split.JdbcInputColumnSplit.class);
     classesToLoad.add(org.apache.commons.dbcp.BasicDataSourceFactory.class);
     classesToLoad.add(org.apache.commons.pool.impl.GenericObjectPool.class);
     // Adding mysql jdbc driver if exists
