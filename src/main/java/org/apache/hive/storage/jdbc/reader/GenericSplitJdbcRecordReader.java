@@ -34,11 +34,8 @@ public class GenericSplitJdbcRecordReader extends JdbcRecordReader {
   public JdbcRecordIterator getIterator() throws HiveJdbcDatabaseAccessException {
     if (dbAccessor == null) {
       dbAccessor = DatabaseAccessorFactory.getAccessor(this.conf);
-
-      return dbAccessor.getRecordIterator(conf, columnSplitConfig.getColumnType(), columnSplitConfig.getColumnName(), columnSplitConfig.getColumnMinValue(), columnSplitConfig.getColumnMaxValue());
     }
-
-    return null;
+    return dbAccessor.getRecordIterator(conf, columnSplitConfig.getColumnType(), columnSplitConfig.getColumnName(), columnSplitConfig.getColumnMinValue(), columnSplitConfig.getColumnMaxValue());
   }
 
   @Override
