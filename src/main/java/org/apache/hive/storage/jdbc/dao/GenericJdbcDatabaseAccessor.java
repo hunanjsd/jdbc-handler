@@ -64,7 +64,7 @@ public class GenericJdbcDatabaseAccessor extends AbstractDatabaseAccessor {
       initializeDatabaseConnection();
       String sql = JdbcStorageConfigManager.getQueryToExecute(conf);
       String countQuery = "SELECT COUNT(*) FROM (" + sql + ") tmptable";
-      LOGGER.info("Query to execute is [{}]", countQuery);
+      LOGGER.info("========================== Query to execute is [{}]", countQuery);
 
       conn = this.dbcpDataSource.getConnection();
       ps = conn.prepareStatement(countQuery);
@@ -102,7 +102,7 @@ public class GenericJdbcDatabaseAccessor extends AbstractDatabaseAccessor {
       initializeDatabaseConnection();
       String sql = JdbcStorageConfigManager.getQueryToExecute(conf);
       String limitQuery = addLimitAndOffsetToQuery(sql, limit, offset);
-      LOGGER.info("Query to execute is [{}]", limitQuery);
+      LOGGER.info("========================== Query to execute is [{}]", limitQuery);
 
       conn = getDbcpDataSource().getConnection();
       ps = conn.prepareStatement(limitQuery, ResultSet.TYPE_FORWARD_ONLY, ResultSet.CONCUR_READ_ONLY);

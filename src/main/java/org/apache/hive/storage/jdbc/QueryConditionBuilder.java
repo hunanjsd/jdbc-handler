@@ -15,6 +15,7 @@
 package org.apache.hive.storage.jdbc;
 
 import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.hive.ql.exec.Utilities;
 import org.apache.hadoop.hive.ql.plan.ExprNodeColumnDesc;
 import org.apache.hadoop.hive.ql.plan.ExprNodeDesc;
 import org.apache.hadoop.hive.ql.plan.TableScanDesc;
@@ -71,8 +72,7 @@ public class QueryConditionBuilder {
     }
 
     Map<String, String> columnMap = buildColumnMapping(columnMapping, hiveColumns);
-    String condition = createConditionString(filterXml, columnMap);
-    return condition;
+    return createConditionString(filterXml, columnMap);
   }
 
 
@@ -121,14 +121,8 @@ public class QueryConditionBuilder {
       return EMPTY_STRING;
     }
 
-    try (XMLDecoder decoder = new XMLDecoder(new ByteArrayInputStream(filterXml.getBytes("UTF-8")))) {
-      Object object = decoder.readObject();
-      if (!(object instanceof ExprNodeDesc)) {
-        LOGGER.error("Deserialized filter expression is not of the expected type");
-        throw new RuntimeException("Deserialized filter expression is not of the expected type");
-      }
-
-      ExprNodeDesc conditionNode = (ExprNodeDesc) object;
+    try{
+      ExprNodeDesc conditionNode = Utilities.deserializeExpression(filterXml);
       walkTreeAndTranslateColumnNames(conditionNode, columnMap);
       return conditionNode.getExprString();
     }
